@@ -171,25 +171,26 @@
 
 ### 10.8 股市泡沫程度
 
-席勒本益比（Shiller CAPE）＝市值／通膨調整後企業整體獲利 10 年平均值。（估值類指標，僅供衡量泡沫程度，不得作為景氣階段的唯一判斷依據。）
+席勒本益比（Shiller CAPE）＝市值／通膨調整後企業整體獲利 10 年平均值。（估值類指標，僅供衡量泡沫程度，不得作為景氣階段的唯一判斷依據。）資料來源：Robert Shiller／耶魯大學（shillerdata.com 等）；FRED 查無此系列。
 
 ---
 
-## 11. 官方資料來源清單（查證用；禁止憑印象填數字）
+## 11. 資料來源清單（查證用；禁止憑印象填數字）
 
 ### 美國（多數可在 FRED 查得）
 
 | 指標 | 來源 |
 | --- | --- |
-| 初領失業救濟金、非農就業、CPI | 美國勞工部 BLS / DOL（FRED: ICSA） |
-| 零售銷售、耐久財、新屋銷售／開工 | 美國商務部普查局 Census Bureau |
+| 初領失業救濟金、非農就業、CPI、短期失業（失業不滿 5 週） | 美國勞工部 BLS / DOL（FRED: ICSA、IC4WSA、PAYEMS、UEMPLT5、CPIAUCSL） |
+| 零售銷售、耐久財、電腦與電子產品訂單、新屋銷售／開工 | 美國商務部普查局 Census Bureau（FRED: RSAFS、RRSFS、DGORDER、NEWORDER、A34SNO、HOUST、HSN1F） |
 | ISM PMI／NMI | ISM（ismworld.org） |
-| GDP、個人消費支出、可支配所得 | BEA |
+| GDP、個人消費支出、可支配所得、民間投資、進出口、企業獲利、州和地方政府支出 | BEA（FRED: GDPC1、PCEC96、DSPIC96、FPIC1、PRFIC1、GPDIC1、IMPGS、IMPGSC1、CPATAX、SLCEC1） |
 | GDPNow | 亞特蘭大聯儲 |
-| 聯邦基金利率、10Y／2Y 殖利率、TIPS、貨幣基底、聯準會資產負債表、HY 利差、Shiller CAPE | FRED（聖路易聯儲） |
-| 消費者信心指數 | Conference Board |
-| 製造業信心指數 | OECD |
-| Zillow Rent Index | Zillow 研究部門 |
+| 聯邦基金利率、10Y／2Y 殖利率、TIPS、貨幣基底、聯準會資產負債表、HY 利差、企業貸款違約率、銀行放貸標準、勞動參與率、30 年期殖利率 | FRED（聖路易聯儲；ID: FEDFUNDS、DGS10、DGS2、T10Y2Y、DFII10、T10YIE、BOGMBASE、WALCL、BAMLH0A0HYM2、DRBLACBS、DRTSCILM、CIVPART、DGS30） |
+| Shiller CAPE（席勒本益比） | Robert Shiller／耶魯大學（shillerdata.com 等）；FRED 查無此系列 |
+| 消費者信心指數 | Conference Board（FRED 無官方系列；FRED 替代：密大 UMCSENT、OECD 版 USACSCICP02STSAM） |
+| 製造業信心指數 | OECD（FRED: BSCICP02USM460S） |
+| Zillow Rent Index（市場租金） | Zillow 研究部門（FRED 無租金系列；FRED 僅有 Zillow 房價 ZHVI 系列，勿混用） |
 | 出生人口 | 美國 CDC |
 
 ### 台灣
@@ -200,7 +201,42 @@
 | 台經院營業氣候測驗點 | 台灣經濟研究院（TIER） |
 | 台灣製造業 PMI | 中華經濟研究院（PMI）／台經院 |
 | 景氣對策信號 | 國發會 |
-| 匯率、外資淨匯入 | 中央銀行、證交所 |
+| 匯率、外資淨匯入 | 中央銀行、證交所（新台幣匯率亦可由 FRED: DEXTAUS 取得，每週更新） |
 | 台股、外資持股 | 台灣證券交易所 |
+
+### 市場資料（非官方統計；引用時須標註「市場定價」）
+
+| 指標 | 來源 |
+| --- | --- |
+| 金價 | 市場行情（LBMA 定盤價、世界黃金協會 GoldHub 等）；FRED 已無現行金價系列 |
+
+### FRED 免 key 取數流程（fredgraph 下載端點）
+
+**取數優先序**：FRED MCP Connector → 免費 API key → 本流程（免 key；僅在前兩者不可得時使用）。
+
+**工具需求**：需能發 HTTP 且處理 CSV 的工具（terminal `curl` ✓）。會檢查 content-type 的網頁讀取工具讀不到 CSV（實測 `Unsupported content type: application/csv`），請改用 curl 取數。
+
+```bash
+# 單一系列：最新值（tail 看最後幾列）
+curl -s "https://fred.stlouisfed.org/graph/fredgraph.csv?id=ICSA" | tail -3
+
+# 單一系列＋日期範圍：&cosd=起始、&coed=結束（YYYY-MM-DD）
+curl -s "https://fred.stlouisfed.org/graph/fredgraph.csv?id=ICSA&cosd=2026-01-01"
+
+# 批次查詢：一次工具呼叫可查完數十組（批次間加 sleep）
+for id in ICSA DGS10 CPIAUCSL RSAFS; do
+  echo "== $id =="
+  curl -s "https://fred.stlouisfed.org/graph/fredgraph.csv?id=$id" | tail -2
+  sleep 0.3
+done
+
+# 多系列單一請求 → 回傳 ZIP（README.txt＋按頻率分檔 CSV；內容為完整歷史，日期參數僅單一系列模式有效）
+curl -s "https://fred.stlouisfed.org/graph/fredgraph.csv?id=ICSA,DGS10,CPIAUCSL" -o bundle.zip
+```
+
+- **驗證 ID**：錯誤 ID 回 HTTP 404；`fredgraph.xlsx` 為 Excel 版。
+- **找 series ID**（清單未列時）：web search「XXX FRED series ID」；或 `curl -s "https://fred.stlouisfed.org/searchresults/?st=<關鍵字>"` 解析 HTML（頁中含 `series/<ID>` 連結）。
+- **使用禮儀**：批次間 `sleep` 0.2～0.5 秒、低頻少量；**即時查、用後即棄**（不得存檔／快取／建庫）；端點格式與行為可能隨時變動，長期或產品化請改用 MCP／API。
+- **引用標註**：`來源：<機構> via FRED`。
 
 **查證紀律**：每個數值記錄「查得日期＋來源 URL」；查不到標「未取得」；模型記憶中的舊數字不得當作現況。
